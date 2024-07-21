@@ -1,32 +1,48 @@
 <?php
+$error = "";  
 
-    $error ="";  
+// Database'e bağlanma işlemi
+$db = mysqli_connect('localhost', 'root', '', 'todo');  
 
-    // Database'e bağlanma işlemi
-    $db = mysqli_connect('localhost', 'root', '', 'todo');  
+// Eğer formdan AddButton butonuna tıklanmışsa
+if (isset($_POST['AddButton'])) {
+    $task = mysqli_real_escape_string($db, $_POST['task']);
 
-    // Eğer formdan AddButton butonuna tıklanmışsa
-    if (isset($_POST['AddButton'])) {
-        $task = $_POST['task']; 
-        if (empty($task)) {  
-            $error = "lütfen içeriği boş bırakmayın";  
+    if (empty($task)) {  
+        $error = "Lütfen içeriği boş bırakmayın";  
+    } else {
+        // Aynı görevin olup olmadığını kontrol ediyoruz
+        $task_check_query = "SELECT * FROM tasks WHERE task='$task' LIMIT 1"; // bir SQL sorgusu belirledik
+        // bu SQL sorgusu $task ile tablodaki herhangi bir task aynı mı diye kontrol ediyor
+        $result = mysqli_query($db, $task_check_query); 
+        // Bir önceki satırda tanımlanan SQL sorgusunu çalıştırır. 
+        // $result bir mysqli_result nesnesi olur ve sonuç setini içerir.
+        // eğer $task dbdeki bir task ile aynı ise $result'ın içi dolu olarak gelir
+        // eğer $task dbdeki bir task ile aynı değil ise $result'ın içi boş gelir ama bu 
+        // $result, null'a eşit demek değildir
+
+        $existing_task = mysqli_fetch_assoc($result); 
+        // Bu satır, $result nesnesinden bir satır alır ve bunu bir ilişkilendirilmiş dizi olarak döner.
+        // Eğer sonuç setinde herhangi bir satır yoksa, $existing_task false döner.
+
+        
+        if ($existing_task) {
+            $error = "Bu görev zaten mevcut!";
         } else {
             mysqli_query($db, "INSERT INTO tasks (task) VALUES ('$task')");
-            // İşlemden sonra tekrar index.php sayfasına yönlendiriyoruz. Bu sayede form tekrar gönderilmiyor.
-            // AMA BUNU YAPMAZSAK NASIL VE NEDEN FORM HER SAYFAYI YENİLEDİĞİMİZDE TEKRAR GÖNDERİLİYOR???
-            header('location:index.php'); 
+            // İşlemden sonra tekrar index.php sayfasına yönlendiriyoruz.
+            header('location: index.php'); 
         }
     }
+}
 
-    
-    if (isset($_GET['del_task'])) {  // Eğer URL'de del_task parametresi; varsa silinecek görev ID'sini alıyoruz ve siliyoz
-        $id = $_GET['del_task'];  
-        mysqli_query($db, "DELETE FROM tasks WHERE id=$id");  
-        header('location: index.php');  
-    }
+if (isset($_GET['del_task'])) {  // Eğer URL'de del_task parametresi; varsa silinecek görev ID'sini alıyoruz ve siliyoz
+    $id = $_GET['del_task'];  
+    mysqli_query($db, "DELETE FROM tasks WHERE id=$id");  
+    header('location: index.php');  
+}
 
-    
-    $tasks = mysqli_query($db, "SELECT * FROM tasks");
+$tasks = mysqli_query($db, "SELECT * FROM tasks");
 ?>
 
 <!DOCTYPE html>
@@ -42,19 +58,15 @@
         <h2>To do List</h2>  
     </div>
 
-
     <form action="index.php" method="POST">  
-        <!-- BURADA İÇ İÇE PHPLER YAZMA OLAYINI DA ANLAYAMIYORUM Bİ TÜRLÜ ÇOK GARİP BİR SYNTAX -->
-        <?php if (isset($error)) {  ?> 
+        <?php if ($error) { ?> 
             <p><?php echo $error; ?></p>  
         <?php } ?>
        
-        <input type="text" name="task" class="task_input">  
+        <input type="text" name="task" autocomplete="off" class="task_input">
         <button type="submit" class="add_btn" name="AddButton">Add Task</button> 
     </form>
 
-
-    <!-- Görevleri listelemek için bir tablo oluşturuyoruz -->
     <table>
         <thead>
             <tr>
@@ -65,15 +77,15 @@
         </thead>
 
         <tbody>
-            <?php $i = 1;  while ($row = mysqli_fetch_array($tasks)) { ?>  <!-- Görevleri veritabanından çekip tablo satırlarına yerleştiriyoruz-->
+            <?php $i = 1;  while ($row = mysqli_fetch_array($tasks)) { ?> 
                 <tr>
                     <td><?php echo $i; ?></td>  
                     <td class="task"><?php echo $row['task']; ?></td>  
                     <td class="delete">
-                        <a href="index.php?del_task=<?php echo $row['id']; ?>">x</a>  <!-- Görevi silmek için bir bağlantı ekliyoruz. -->
+                        <a href="index.php?del_task=<?php echo $row['id']; ?>">x</a>
                     </td>
                 </tr>
-            <?php $i++; } ?>  <!-- Her görev için görev numarasını bir artırıyoruz. -->
+            <?php $i++; } ?> 
         </tbody>
     </table>
 </body>
