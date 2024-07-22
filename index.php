@@ -1,91 +1,103 @@
 <?php
-$error = "";  
+$error = "";  // Hata mesajını tutacak değişken
 
-// Database'e bağlanma işlemi
-$db = mysqli_connect('localhost', 'root', '', 'todo');  
+// Veritabanı bağlantısı için gerekli bilgiler
+$host = "localhost";
+$username = "root";
+$password = "";
+$db = "todo";
 
-// Eğer formdan AddButton butonuna tıklanmışsa
+try {
+    // PDO ile veritabanına bağlanma
+    $pdo = new PDO("mysql:host=$host;dbname=$db;charset=utf8", $username, $password);
+    
+} catch (PDOException $e) {
+    echo "Bağlantı hatası: " . $e->getMessage(); // Bağlantı hatası mesajını göster
+    exit; // Hata durumunda scripti durdur
+}
+
+// Eğer AddButton butonuna tıklanmışsa
 if (isset($_POST['AddButton'])) {
-    $task = mysqli_real_escape_string($db, $_POST['task']);
+    $task = $_POST['task']; // Formdan gelen görevi al
 
-    if (empty($task)) {  
-        $error = "Lütfen içeriği boş bırakmayın";  
+    if (empty($task)) {
+        $error = "Lütfen içeriği boş bırakmayın"; // Görev boşsa hata mesajı
     } else {
-        // Aynı görevin olup olmadığını kontrol ediyoruz
-        $task_check_query = "SELECT * FROM tasks WHERE task='$task' LIMIT 1"; // bir SQL sorgusu belirledik
-        // bu SQL sorgusu $task ile tablodaki herhangi bir task aynı mı diye kontrol ediyor
-        $result = mysqli_query($db, $task_check_query); 
-        // Bir önceki satırda tanımlanan SQL sorgusunu çalıştırır. 
-        // $result bir mysqli_result nesnesi olur ve sonuç setini içerir.
-        // eğer $task dbdeki bir task ile aynı ise $result'ın içi dolu olarak gelir
-        // eğer $task dbdeki bir task ile aynı değil ise $result'ın içi boş gelir ama bu 
-        // $result, null'a eşit demek değildir
-
-        $existing_task = mysqli_fetch_assoc($result); 
-        // Bu satır, $result nesnesinden bir satır alır ve bunu bir ilişkilendirilmiş dizi olarak döner.
-        // Eğer sonuç setinde herhangi bir satır yoksa, $existing_task false döner.
-
-        
+        // Aynı görevin olup olmadığını kontrol et
+        $stmt = $pdo->prepare("SELECT * FROM tasks WHERE task = :task LIMIT 1"); 
+        // yeni eklenen :task tablodaki tasklerde aranması için olan sql sorgusu
+        $stmt->execute(['task' => $task]);
+        // execute fonksiyonu, :task parametresini $task değişkeninin değeriyle değiştirir ve sorguyu yürütür.
+        $existing_task = $stmt->fetch(PDO::FETCH_ASSOC); // Sorgu sonucunu al
+        // sorgu sonucunu bir ilişkilendirilmiş dizi (associative array) olarak alır. 
+        // Eğer sonuç varsa, $existing_task değişkeni bu sonucu içerir; aksi takdirde false döner.
         if ($existing_task) {
-            $error = "Bu görev zaten mevcut!";
+            $error = "Bu görev zaten mevcut!"; // Görev zaten varsa hata mesajı
         } else {
-            mysqli_query($db, "INSERT INTO tasks (task) VALUES ('$task')");
-            // İşlemden sonra tekrar index.php sayfasına yönlendiriyoruz.
-            header('location: index.php'); 
+            // Yeni görevi veritabanına ekle
+            $stmt = $pdo->prepare("INSERT INTO tasks (task) VALUES (:task)");
+            $stmt->execute(['task' => $task]);
+            header('Location: index.php'); // İşlemden sonra sayfayı yeniden yükle
+            exit;
         }
     }
 }
 
-if (isset($_GET['del_task'])) {  // Eğer URL'de del_task parametresi; varsa silinecek görev ID'sini alıyoruz ve siliyoz
-    $id = $_GET['del_task'];  
-    mysqli_query($db, "DELETE FROM tasks WHERE id=$id");  
-    header('location: index.php');  
+// Eğer URL'de del_task parametresi varsa
+if (isset($_GET['del_task'])) {
+    $id = $_GET['del_task']; // Silinecek görevin ID'sini al
+    $stmt = $pdo->prepare("DELETE FROM tasks WHERE id = :id");
+    $stmt->execute(['id' => $id]); // Görevi veritabanından sil
+    header('Location: index.php'); // İşlemden sonra sayfayı yeniden yükle
+    exit;
 }
 
-$tasks = mysqli_query($db, "SELECT * FROM tasks");
+// Tüm görevleri veritabanından getir
+$stmt = $pdo->query("SELECT * FROM tasks");
+$tasks = $stmt->fetchAll(PDO::FETCH_ASSOC); // Tüm görevleri al
 ?>
 
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 <head>
-    <meta charset="UTF-8">  
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
-    <link rel="stylesheet" href="style.css">  
-    <title>Todo list</title>  
+    <meta charset="UTF-8"> <!-- Türkçe karakter desteği için UTF-8 -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> <!-- Responsive tasarım için viewport ayarı -->
+    <link rel="stylesheet" href="style.css"> <!-- Harici CSS dosyasını bağla -->
+    <title>Yapılacaklar Listesi</title> <!-- Sayfa başlığı -->
 </head>
 <body>
     <div class="heading">
-        <h2>To do List</h2>  
+        <h2>Yapılacaklar Listesi</h2> <!-- Başlık -->
     </div>
 
-    <form action="index.php" method="POST">  
-        <?php if ($error) { ?> 
-            <p><?php echo $error; ?></p>  
+    <form action="index.php" method="POST"> <!-- Form başlangıcı -->
+        <?php if ($error) { ?> <!-- Eğer hata mesajı varsa -->
+            <p><?php echo $error; ?></p> <!-- Hata mesajını göster -->
         <?php } ?>
        
-        <input type="text" name="task" autocomplete="off" class="task_input">
-        <button type="submit" class="add_btn" name="AddButton">Add Task</button> 
+        <input type="text" name="task" autocomplete="off" class="task_input"> <!-- Görev girişi için input -->
+        <button type="submit" class="add_btn" name="AddButton">Görev Ekle</button> <!-- Görev ekleme butonu -->
     </form>
 
     <table>
         <thead>
             <tr>
-                <th>No</th>  
-                <th>Task</th>  
-                <th>Action</th>  
+                <th>No</th>
+                <th>Görev</th>
+                <th>İşlem</th>
             </tr>
         </thead>
 
         <tbody>
-            <?php $i = 1;  while ($row = mysqli_fetch_array($tasks)) { ?> 
+            <?php $i = 1; foreach ($tasks as $row) { ?> <!-- Tüm görevleri listele -->
                 <tr>
-                    <td><?php echo $i; ?></td>  
-                    <td class="task"><?php echo $row['task']; ?></td>  
+                    <td><?php echo $i; ?></td> <!-- Görev numarası -->
+                    <td class="task"><?php echo htmlspecialchars($row['task']); ?></td> <!-- Görev içeriği -->
                     <td class="delete">
-                        <a href="index.php?del_task=<?php echo $row['id']; ?>">x</a>
+                        <a href="index.php?del_task=<?php echo $row['id']; ?>">x</a> <!-- Görev silme bağlantısı -->
                     </td>
                 </tr>
-            <?php $i++; } ?> 
+            <?php $i++; } ?>
         </tbody>
     </table>
 </body>
