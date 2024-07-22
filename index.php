@@ -29,7 +29,7 @@ if (isset($_POST['AddButton'])) {
         $stmt->execute(['task' => $task]);
         // execute fonksiyonu, :task parametresini $task değişkeninin değeriyle değiştirir ve sorguyu yürütür.
         $existing_task = $stmt->fetch(PDO::FETCH_ASSOC); // Sorgu sonucunu al
-        // sorgu sonucunu bir ilişkilendirilmiş dizi (associative array) olarak alır. 
+        // sorgu sonucunu bir ilişkilendirilmiş dizi olarak alır. 
         // Eğer sonuç varsa, $existing_task değişkeni bu sonucu içerir; aksi takdirde false döner.
         if ($existing_task) {
             $error = "Bu görev zaten mevcut!"; // Görev zaten varsa hata mesajı
