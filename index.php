@@ -71,10 +71,6 @@ $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC); // Tüm görevleri al
     </div>
 
     <form action="index.php" method="POST"> <!-- Form başlangıcı -->
-        <?php if ($error) { ?> <!-- Eğer hata mesajı varsa -->
-            <p><?php echo $error; ?></p> <!-- Hata mesajını göster -->
-        <?php } ?>
-       
         <input type="text" name="task" autocomplete="off" class="task_input"> <!-- Görev girişi için input -->
         <button type="submit" class="add_btn" name="AddButton">Görev Ekle</button> <!-- Görev ekleme butonu -->
     </form>
