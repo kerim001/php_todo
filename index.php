@@ -26,13 +26,20 @@ if (isset($_POST['AddButton'])) {
         // Aynı görevin olup olmadığını kontrol et
         $stmt = $pdo->prepare("SELECT * FROM tasks WHERE task = :task LIMIT 1"); 
         // yeni eklenen :task tablodaki tasklerde aranması için olan sql sorgusu
-        $stmt->execute(['task' => $task]);
+        $stmt->execute([':task' => $task]);
         // execute fonksiyonu, :task parametresini $task değişkeninin değeriyle değiştirir ve sorguyu yürütür.
         $existing_task = $stmt->fetch(PDO::FETCH_ASSOC); // Sorgu sonucunu al
         // sorgu sonucunu bir ilişkilendirilmiş dizi olarak alır. 
         // Eğer sonuç varsa, $existing_task değişkeni bu sonucu içerir; aksi takdirde false döner.
         if ($existing_task) {
             $error = "Bu görev zaten mevcut!"; // Görev zaten varsa hata mesajı
+            ?> 
+            <script>
+                alert("Bu görev zaten mevcut!");
+                window.location.replace(
+                    "index.php",);
+            </script>
+            <?php
         } else {
             // Yeni görevi veritabanına ekle
             $stmt = $pdo->prepare("INSERT INTO tasks (task) VALUES (:task)");
@@ -71,6 +78,9 @@ $tasks = $stmt->fetchAll(PDO::FETCH_ASSOC); // Tüm görevleri al
     </div>
 
     <form action="index.php" method="POST"> <!-- Form başlangıcı -->
+        <?php if (isset($error)) {  ?> 
+            <p><?php echo $error; ?></p>  
+        <?php } ?>
         <input type="text" name="task" autocomplete="off" class="task_input"> <!-- Görev girişi için input -->
         <button type="submit" class="add_btn" name="AddButton">Görev Ekle</button> <!-- Görev ekleme butonu -->
     </form>
